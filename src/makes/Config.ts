@@ -14,29 +14,32 @@ export abstract class Config {
     public defaultService?: string;
     public services: Service[] = [];
 
-    protected constructor(data: ConfigProps) {
+    public constructor(data: ConfigProps) {
         const {
             defaultService,
             services = []
         } = data;
 
         this.defaultService = defaultService;
-        this.services = services.map((value) => {
+        this.services = (services || []).map((value) => {
             return new Service(value);
         });
     }
 
-    public addService(name: string): void {
-        if(!this.services) {
-            this.services = [];
+    public setService(service: Service): void {
+        let exists = false;
+
+        for(let i = 0; i < this.services.length; i++) {
+            if(this.services[i].name === service.name) {
+                exists = true;
+
+                this.services[i] = service;
+            }
         }
 
-        this.services = [
-            ...this.services.filter((service) => {
-                return service.name !== name;
-            }),
-            new Service({name})
-        ];
+        if(!exists) {
+            this.services.push(service);
+        }
     }
 
     public removeService(name: string): void {
@@ -45,13 +48,13 @@ export abstract class Config {
         });
     }
 
-    public getService(name: string) {
+    public getService(name: string): Service | undefined {
         return this.services.find((service) => {
             return service.name === name;
         });
     }
 
-    public getDefaultService() {
+    public getDefaultService(): Service | undefined {
         if(!this.defaultService) {
             return;
         }

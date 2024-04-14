@@ -1,7 +1,8 @@
 import {
     Controller,
     Completion,
-    Command
+    Command,
+    Option
 } from "@wocker/core";
 
 import {RedisService} from "../services/RedisService";
@@ -14,8 +15,15 @@ export class RedisController {
     ) {}
 
     @Command("redis:create <service>")
-    public async create(service: string): Promise<void> {
-        await this.redisService.create(service);
+    public async create(
+        @Option("host", {
+            type: "string",
+            alias: "h"
+        })
+        host: string,
+        service: string
+    ): Promise<void> {
+        await this.redisService.create(service, host);
     }
 
     @Command("redis:destroy <service>")
@@ -44,6 +52,6 @@ export class RedisController {
 
     @Completion("service")
     public async getServices(): Promise<string[]> {
-        return this.redisService.getServiceNames()
+        return this.redisService.getServiceNames();
     }
 }
