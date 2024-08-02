@@ -6,12 +6,13 @@ import {
 } from "@wocker/core";
 
 import {Config, ConfigProps} from "../makes/Config";
+import {Service} from "../makes/Service";
 
 
 @Injectable()
 export class RedisService {
-    protected readonly container = "redis.ws";
-    protected readonly commander = "redis-commander.workspace";
+    protected readonly container: string = "redis.ws";
+    protected readonly commander: string = "redis-commander.workspace";
     protected config?: Config;
 
     public constructor(
@@ -20,10 +21,21 @@ export class RedisService {
         protected readonly pluginConfigService: PluginConfigService
     ) {}
 
-    public async create(name: string): Promise<void> {
+    public async create(name: string, host?: string): Promise<void> {
         const config = await this.getConfig();
 
-        config.addService(name);
+        let service = config.getService(name)
+
+        if(!service) {
+            service = new Service({
+                name,
+                host
+            });
+        }
+
+        service.host = host;
+
+        config.setService(service);
 
         if(!config.defaultService) {
             config.defaultService = name;
@@ -114,11 +126,19 @@ export class RedisService {
             const redisHosts: string[] = [];
 
             for(const service of config.services) {
-                if(!await this.dockerService.getContainer(service.containerName)) {
+                let host: string;
+
+                if(service.host) {
+                    host = service.host;
+                }
+                else if(await this.dockerService.getContainer(service.containerName)) {
+                    host = service.containerName;
+                }
+                else {
                     continue;
                 }
 
-                redisHosts.push(`${service.name}:${service.containerName}`);
+                redisHosts.push(`${service.name}:${host}`);
             }
 
             if(redisHosts.length === 0) {
@@ -172,11 +192,7 @@ export class RedisService {
             const _this = this;
 
             this.config = new class extends Config {
-                public constructor(data: ConfigProps) {
-                    super(data);
-                }
-
-                public async save() {
+                public async save(): Promise<void> {
                     await _this.pluginConfigService.writeJSON("config.json", this.toJSON());
                 }
             }(data);
