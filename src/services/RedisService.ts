@@ -2,11 +2,19 @@ import {
     Injectable,
     AppConfigService,
     PluginConfigService,
-    DockerService
+    DockerService,
+    ProxyService
 } from "@wocker/core";
+import {promptText, promptSelect} from "@wocker/utils";
+import CliTable from "cli-table3";
 
 import {Config, ConfigProps} from "../makes/Config";
-import {Service} from "../makes/Service";
+import {
+    Service,
+    RedisStorageType,
+    REDIS_STORAGE_FILESYSTEM,
+    REDIS_STORAGE_VOLUME
+} from "../makes/Service";
 
 
 @Injectable()
@@ -18,22 +26,49 @@ export class RedisService {
     public constructor(
         protected readonly appConfigService: AppConfigService,
         protected readonly dockerService: DockerService,
-        protected readonly pluginConfigService: PluginConfigService
+        protected readonly pluginConfigService: PluginConfigService,
+        protected readonly proxyService: ProxyService
     ) {}
 
-    public async create(name: string, host?: string): Promise<void> {
+    public async create(name?: string, host?: string, storage?: RedisStorageType): Promise<void> {
         const config = await this.getConfig();
 
-        let service = config.getService(name)
-
-        if(!service) {
-            service = new Service({
-                name,
-                host
-            });
+        if(!name) {
+            name = await promptText({
+                message: "Service name:"
+            }) as string;
         }
 
-        service.host = host;
+        if(config.getService(name)) {
+            throw new Error(`Service ${name} already exists`);
+        }
+
+        if(!host) {
+            if(!storage || ![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
+                storage = await promptSelect<RedisStorageType>({
+                    message: "Storage type:",
+                    options: [
+                        {
+                            label: "Volume",
+                            value: REDIS_STORAGE_VOLUME
+                        },
+                        {
+                            label: "File System",
+                            value: REDIS_STORAGE_FILESYSTEM
+                        }
+                    ]
+                });
+            }
+        }
+        else {
+            storage = undefined;
+        }
+
+        const service = new Service({
+            name,
+            host,
+            storage
+        });
 
         config.setService(service);
 
@@ -42,6 +77,8 @@ export class RedisService {
         }
 
         await config.save();
+
+        console.info(`Service ${service.name} created`);
     }
 
     public async destroy(name: string): Promise<void> {
@@ -49,6 +86,30 @@ export class RedisService {
 
         if(config.defaultService === name) {
             throw new Error("Can't delete default service");
+        }
+
+        const service = config.getService(name);
+
+        if(!service) {
+            throw new Error(`Service ${name} not found`);
+        }
+
+        switch(service.storage) {
+            case "volume": {
+                if(await this.dockerService.hasVolume(service.volumeName)) {
+                    await this.dockerService.rmVolume(service.volumeName);
+                }
+                break;
+            }
+
+            case "filesystem": {
+                if(this.pluginConfigService.exists(service.name)) {
+                    await this.pluginConfigService.rm(service.name, {
+                        recursive: true
+                    });
+                }
+                break;
+            }
         }
 
         config.removeService(name);
@@ -78,9 +139,25 @@ export class RedisService {
         if(!container) {
             await this.dockerService.pullImage("redis:latest");
 
-            await this.pluginConfigService.mkdir(`${service.name}`, {
-                recursive: true
-            });
+            const volumes: string[] = [];
+
+            switch(service.storage) {
+                case "volume": {
+                    volumes.push(`${service.volumeName}:/data`);
+                    break;
+                }
+
+                case "filesystem":
+                default: {
+                    await this.pluginConfigService.mkdir(service.name, {
+                        recursive: true
+                    });
+
+                    volumes.push(`${this.pluginConfigService.dataPath(service.name)}:/data`)
+
+                    break;
+                }
+            }
 
             container = await this.dockerService.createContainer({
                 name: service.containerName,
@@ -89,9 +166,7 @@ export class RedisService {
                 env: {
                     VIRTUAL_HOST: service.containerName,
                 },
-                volumes: [
-                    `${this.pluginConfigService.dataPath(service.name)}:/data`
-                ]
+                volumes
             });
         }
 
@@ -165,6 +240,9 @@ export class RedisService {
 
         if(!Running) {
             await container.start();
+            await this.proxyService.start();
+
+            console.info(`Redis commander started at http://${this.commander}`);
         }
     }
 
@@ -199,5 +277,23 @@ export class RedisService {
         }
 
         return this.config;
+    }
+
+    public async getListTable(): Promise<string> {
+        const config = await this.getConfig();
+
+        const table = new CliTable({
+            head: ["Name", "Host", "Storage"]
+        });
+
+        for(const service of config.services || []) {
+            table.push([
+                service.name,
+                service.isExternal ? service.host : service.containerName,
+                service.storage
+            ]);
+        }
+
+        return table.toString();
     }
 }

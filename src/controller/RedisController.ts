@@ -2,8 +2,10 @@ import {
     Controller,
     Completion,
     Command,
-    Option
+    Option,
+    Param
 } from "@wocker/core";
+import {RedisStorageType} from "../makes/Service";
 
 import {RedisService} from "../services/RedisService";
 
@@ -14,16 +16,22 @@ export class RedisController {
         protected readonly redisService: RedisService
     ) {}
 
-    @Command("redis:create <service>")
+    @Command("redis:create [service]")
     public async create(
+        @Param("service")
+        service?: string,
         @Option("host", {
             type: "string",
             alias: "h"
         })
-        host: string,
-        service: string
+        host?: string,
+        @Option("storage", {
+            type: "string",
+            alias: "s"
+        })
+        storage?: RedisStorageType
     ): Promise<void> {
-        await this.redisService.create(service, host);
+        await this.redisService.create(service, host, storage);
     }
 
     @Command("redis:destroy <service>")
@@ -48,6 +56,11 @@ export class RedisController {
     public async stop(service?: string): Promise<void> {
         await this.redisService.stop(service);
         await this.redisService.startCommander();
+    }
+
+    @Command("redis:ls")
+    public async list(): Promise<string> {
+        return this.redisService.getListTable();
     }
 
     @Completion("service")
