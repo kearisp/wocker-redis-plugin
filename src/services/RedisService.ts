@@ -262,7 +262,8 @@ export class RedisService {
                     defaultService: "default",
                     services: [
                         {
-                            name: "default"
+                            name: "default",
+                            storage: "volume"
                         }
                     ]
                 };

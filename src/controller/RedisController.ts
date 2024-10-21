@@ -35,25 +35,37 @@ export class RedisController {
     }
 
     @Command("redis:destroy <service>")
-    public async destroy(service: string): Promise<void> {
+    public async destroy(
+        @Param("service")
+        service: string
+    ): Promise<void> {
         await this.redisService.stop(service);
         await this.redisService.startCommander();
         await this.redisService.destroy(service);
     }
 
     @Command("redis:use <service>")
-    public async use(service: string): Promise<void> {
+    public async use(
+        @Param("service")
+        service: string
+    ): Promise<void> {
         await this.redisService.use(service);
     }
 
     @Command("redis:start [service]")
-    public async start(service?: string): Promise<void> {
+    public async start(
+        @Param("service")
+        service?: string
+    ): Promise<void> {
         await this.redisService.start(service);
         await this.redisService.startCommander();
     }
 
     @Command("redis:stop [service]")
-    public async stop(service?: string): Promise<void> {
+    public async stop(
+        @Param("service")
+        service?: string
+    ): Promise<void> {
         await this.redisService.stop(service);
         await this.redisService.startCommander();
     }
