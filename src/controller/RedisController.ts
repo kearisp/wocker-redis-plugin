@@ -2,8 +2,10 @@ import {
     Controller,
     Completion,
     Command,
-    Option
+    Option,
+    Param
 } from "@wocker/core";
+import {RedisStorageType} from "../makes/Service";
 
 import {RedisService} from "../services/RedisService";
 
@@ -14,40 +16,63 @@ export class RedisController {
         protected readonly redisService: RedisService
     ) {}
 
-    @Command("redis:create <service>")
+    @Command("redis:create [service]")
     public async create(
+        @Param("service")
+        service?: string,
         @Option("host", {
             type: "string",
             alias: "h"
         })
-        host: string,
-        service: string
+        host?: string,
+        @Option("storage", {
+            type: "string",
+            alias: "s"
+        })
+        storage?: RedisStorageType
     ): Promise<void> {
-        await this.redisService.create(service, host);
+        await this.redisService.create(service, host, storage);
     }
 
     @Command("redis:destroy <service>")
-    public async destroy(service: string): Promise<void> {
+    public async destroy(
+        @Param("service")
+        service: string
+    ): Promise<void> {
         await this.redisService.stop(service);
         await this.redisService.startCommander();
         await this.redisService.destroy(service);
     }
 
     @Command("redis:use <service>")
-    public async use(service: string): Promise<void> {
+    public async use(
+        @Param("service")
+        service: string
+    ): Promise<void> {
         await this.redisService.use(service);
     }
 
     @Command("redis:start [service]")
-    public async start(service?: string): Promise<void> {
+    public async start(
+        @Param("service")
+        service?: string
+    ): Promise<void> {
         await this.redisService.start(service);
         await this.redisService.startCommander();
     }
 
     @Command("redis:stop [service]")
-    public async stop(service?: string): Promise<void> {
+    public async stop(
+        @Param("service")
+        service?: string
+    ): Promise<void> {
         await this.redisService.stop(service);
         await this.redisService.startCommander();
+    }
+
+    @Command("redis:ls")
+    public async list(): Promise<string> {
+        return this.redisService.getListTable();
     }
 
     @Completion("service")
