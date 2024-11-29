@@ -7,18 +7,21 @@ export type ServiceProps = {
     name: string;
     host?: string;
     storage?: RedisStorageType;
+    volume?: string;
 };
 
 export class Service {
     public name: string;
     public host?: string;
     public storage?: RedisStorageType;
+    public volume?: string;
 
     public constructor(data: ServiceProps) {
         const {
             name,
             host,
-            storage
+            storage,
+            volume
         } = data;
 
         this.name = name;
@@ -27,6 +30,12 @@ export class Service {
 
         if(!this.isExternal && !this.storage) {
             this.storage = "filesystem";
+        }
+
+        this.volume = volume;
+
+        if(this.storage === "volume" && !this.volume) {
+            this.volume = this.defaultVolumeName;
         }
     }
 
@@ -39,6 +48,14 @@ export class Service {
     }
 
     public get volumeName(): string {
+        if(!this.volume) {
+            return this.defaultVolumeName;
+        }
+
+        return this.volume;
+    }
+
+    public get defaultVolumeName(): string {
         return `wocker-redis-${this.name}`;
     }
 

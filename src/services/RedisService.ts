@@ -289,9 +289,9 @@ export class RedisService {
 
         for(const service of config.services || []) {
             table.push([
-                service.name,
+                service.name + (config.defaultService === service.name ? " (default)" : ""),
                 service.isExternal ? service.host : service.containerName,
-                service.storage
+                service.storage,
             ]);
         }
 

@@ -1,12 +1,13 @@
 {
     "name": "@wocker/redis-plugin",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Redis plugin for wocker",
     "license": "MIT",
     "keywords": [
         "wocker",
-        "plugin"
+        "plugin",
+        "redis"
     ],
     "main": "./lib/index.js",
     "types": "lib/index.d.ts",
@@ -25,7 +26,7 @@
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "dependencies": {
-        "@wocker/core": "^1.0.18",
+        "@wocker/core": "^1.0.20",
         "@wocker/utils": "^1.0.7",
         "cli-table3": "^0.6.5"
     },
