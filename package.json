@@ -11,7 +11,7 @@
     ],
     "main": "./lib/index.js",
     "types": "lib/index.d.ts",
-    "homepage": "https://kearisp.github.io/wocker/plugins/redis",
+    "homepage": "https://kearisp.github.io/wocker/docs/plugins/redis",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/kearisp/wocker-redis-plugin.git"
