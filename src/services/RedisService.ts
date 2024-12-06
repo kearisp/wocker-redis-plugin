@@ -61,8 +61,8 @@ export class RedisService {
 
         config.setService(service);
 
-        if(!config.defaultService) {
-            config.defaultService = name;
+        if(!config.default) {
+            config.default = name;
         }
 
         await config.save();
@@ -73,7 +73,7 @@ export class RedisService {
     public async destroy(name: string): Promise<void> {
         const config = await this.getConfig();
 
-        if(config.defaultService === name) {
+        if(config.default === name) {
             throw new Error("Can't delete default service");
         }
 
@@ -114,7 +114,7 @@ export class RedisService {
             throw new Error(`Service "${name}" does not exist`);
         }
 
-        config.defaultService = name;
+        config.default = name;
 
         await config.save();
     }
@@ -213,7 +213,7 @@ export class RedisService {
                 image: "rediscommander/redis-commander:latest",
                 restart: "always",
                 env: {
-                    VIRTUAL_HOST: this.commander,
+                    VIRTUAL_HOST: config.adminDomain,
                     VIRTUAL_PORT: "8081",
                     REDIS_HOSTS: redisHosts.join(",")
                 }
@@ -230,7 +230,7 @@ export class RedisService {
             await container.start();
             await this.proxyService.start();
 
-            console.info(`Redis commander started at http://${this.commander}`);
+            console.info(`Redis commander started at http://${config.adminDomain}`);
         }
     }
 
@@ -277,7 +277,7 @@ export class RedisService {
 
         for(const service of config.services || []) {
             table.push([
-                service.name + (config.defaultService === service.name ? " (default)" : ""),
+                service.name + (config.default === service.name ? " (default)" : ""),
                 service.isExternal ? service.host : service.containerName,
                 service.storage === REDIS_STORAGE_VOLUME ? service.volume : "",
             ]);
@@ -299,6 +299,14 @@ export class RedisService {
         }
 
         config.setService(service);
+
+        await config.save();
+    }
+
+    public async changeDomain(domain: string): Promise<void> {
+        const config = await this.getConfig();
+
+        config.adminDomain = domain;
 
         await config.save();
     }

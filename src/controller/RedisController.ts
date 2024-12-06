@@ -108,6 +108,15 @@ export class RedisController {
         await this.redisService.update(name, storage, volume);
     }
 
+    @Command("redis:set-domain <domain>")
+    public async changeDomain(
+        @Param("domain")
+        domain: string
+    ): Promise<void> {
+        await this.redisService.changeDomain(domain);
+        await this.redisService.startCommander();
+    }
+
     @Completion("service")
     public async getServices(): Promise<string[]> {
         return this.redisService.getServiceNames();

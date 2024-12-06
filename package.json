@@ -6,11 +6,13 @@
     "license": "MIT",
     "keywords": [
         "wocker",
+        "docker",
         "plugin",
-        "redis"
+        "redis",
+        "devops"
     ],
     "main": "./lib/index.js",
-    "types": "lib/index.d.ts",
+    "types": "./lib/index.d.ts",
     "homepage": "https://kearisp.github.io/wocker/docs/plugins/redis",
     "repository": {
         "type": "git",

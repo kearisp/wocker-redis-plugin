@@ -1,29 +1,28 @@
-import {PickProperties} from "@wocker/core";
-
-import {
-    Service,
-    ServiceProps
-} from "./Service";
+import {Service, ServiceProps} from "./Service";
 
 
-export type ConfigProps = Omit<PickProperties<Config>, "services"> & {
+export type ConfigProps = {
+    adminDomain?: string;
+    default?: string;
+    defaultService?: string;
     services?: ServiceProps[];
 };
 
 export abstract class Config {
-    public adminHost?: string;
-    public defaultService?: string;
+    public adminDomain: string;
+    public default?: string;
     public services: Service[] = [];
 
     public constructor(data: ConfigProps) {
         const {
-            adminHost,
-            defaultService,
+            adminDomain = "redis-commander.workspace",
+            default: defaultService,
+            defaultService: oldDefault,
             services = []
         } = data;
 
-        this.adminHost = adminHost;
-        this.defaultService = defaultService;
+        this.adminDomain = adminDomain;
+        this.default = defaultService || oldDefault;
         this.services = (services || []).map((value) => {
             return new Service(value);
         });
@@ -58,11 +57,11 @@ export abstract class Config {
     }
 
     public getDefaultService(): Service | undefined {
-        if(!this.defaultService) {
+        if(!this.default) {
             return;
         }
 
-        return this.getService(this.defaultService);
+        return this.getService(this.default);
     }
 
     public getServiceOrDefault(name?: string) {
@@ -85,11 +84,11 @@ export abstract class Config {
 
     public toJSON(): ConfigProps {
         return {
-            adminHost: this.adminHost,
-            defaultService: this.defaultService,
+            adminDomain: this.adminDomain,
+            default: this.default,
             services: this.services.length > 0
                 ? this.services.map((service) => {
-                    return service.toJSON();
+                    return service.toObject();
                 })
                 : undefined
         };
