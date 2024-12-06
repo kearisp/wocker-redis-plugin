@@ -1,20 +1,9 @@
-import {
-    Injectable,
-    AppConfigService,
-    PluginConfigService,
-    DockerService,
-    ProxyService
-} from "@wocker/core";
-import {promptText, promptSelect} from "@wocker/utils";
+import {AppConfigService, DockerService, Injectable, PluginConfigService, ProxyService} from "@wocker/core";
+import {promptSelect, promptText} from "@wocker/utils";
 import CliTable from "cli-table3";
 
 import {Config, ConfigProps} from "../makes/Config";
-import {
-    Service,
-    RedisStorageType,
-    REDIS_STORAGE_FILESYSTEM,
-    REDIS_STORAGE_VOLUME
-} from "../makes/Service";
+import {REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME, RedisStorageType, Service} from "../makes/Service";
 
 
 @Injectable()
@@ -130,7 +119,7 @@ export class RedisService {
         await config.save();
     }
 
-    public async start(name?: string): Promise<void> {
+    public async start(name?: string, restart?: boolean): Promise<void> {
         const config = await this.getConfig();
         const service = config.getServiceOrDefault(name);
 
@@ -154,7 +143,6 @@ export class RedisService {
                     });
 
                     volumes.push(`${this.pluginConfigService.dataPath(service.name)}:/data`)
-
                     break;
                 }
             }
@@ -291,10 +279,27 @@ export class RedisService {
             table.push([
                 service.name + (config.defaultService === service.name ? " (default)" : ""),
                 service.isExternal ? service.host : service.containerName,
-                service.storage,
+                service.storage === REDIS_STORAGE_VOLUME ? service.volume : "",
             ]);
         }
 
         return table.toString();
+    }
+
+    public async update(name?: string, storage?: string, volume?: string): Promise<void> {
+        const config = await this.getConfig();
+        const service = config.getServiceOrDefault(name);
+
+        if(storage && ![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
+            throw new Error("Invalid storage type");
+        }
+
+        if(volume) {
+            service.volume = volume;
+        }
+
+        config.setService(service);
+
+        await config.save();
     }
 }

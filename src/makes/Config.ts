@@ -11,15 +11,18 @@ export type ConfigProps = Omit<PickProperties<Config>, "services"> & {
 };
 
 export abstract class Config {
+    public adminHost?: string;
     public defaultService?: string;
     public services: Service[] = [];
 
     public constructor(data: ConfigProps) {
         const {
+            adminHost,
             defaultService,
             services = []
         } = data;
 
+        this.adminHost = adminHost;
         this.defaultService = defaultService;
         this.services = (services || []).map((value) => {
             return new Service(value);
@@ -82,6 +85,7 @@ export abstract class Config {
 
     public toJSON(): ConfigProps {
         return {
+            adminHost: this.adminHost,
             defaultService: this.defaultService,
             services: this.services.length > 0
                 ? this.services.map((service) => {
