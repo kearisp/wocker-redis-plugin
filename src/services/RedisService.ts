@@ -1,4 +1,12 @@
-import {AppConfigService, DockerService, Injectable, PluginConfigService, ProxyService} from "@wocker/core";
+import {
+    AppConfigService,
+    DockerService,
+    Injectable,
+    Inject,
+    ProxyService,
+    FileSystem,
+    PLUGIN_DIR_KEY
+} from "@wocker/core";
 import {promptSelect, promptText, promptConfirm} from "@wocker/utils";
 import CliTable from "cli-table3";
 
@@ -8,16 +16,48 @@ import {REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME, RedisStorageType, Servic
 
 @Injectable()
 export class RedisService {
-    protected readonly container: string = "redis.ws";
     protected readonly commander: string = "redis-commander.workspace";
-    protected config?: Config;
+    protected _config?: Config;
 
     public constructor(
         protected readonly appConfigService: AppConfigService,
         protected readonly dockerService: DockerService,
-        protected readonly pluginConfigService: PluginConfigService,
-        protected readonly proxyService: ProxyService
+        protected readonly proxyService: ProxyService,
+        @Inject(PLUGIN_DIR_KEY)
+        protected readonly pluginDir: string
     ) {}
+
+    public get config(): Config {
+        if(!this._config) {
+            const fs = this.fs;
+
+            const data = fs.exists("config.json")
+                ? fs.readJSON("config.json")
+                : {};
+
+            this._config = new class extends Config {
+                public save(): void {
+                    if(!fs.exists("")) {
+                        fs.mkdir("", {
+                            recursive: true
+                        });
+                    }
+
+                    fs.writeJSON("config.json", this.toJSON());
+                }
+            }(data);
+        }
+
+        return this._config;
+    }
+
+    public get fs(): FileSystem {
+        if(!this.pluginDir) {
+            throw new Error("Plugin dir missed");
+        }
+
+        return new FileSystem(this.pluginDir);
+    }
 
     public async create(name?: string, host?: string, storage?: RedisStorageType): Promise<void> {
         const config = await this.getConfig();
@@ -103,8 +143,8 @@ export class RedisService {
             }
 
             case "filesystem": {
-                if(this.pluginConfigService.exists(service.name)) {
-                    await this.pluginConfigService.rm(service.name, {
+                if(this.fs.exists(service.name)) {
+                    this.fs.rm(service.name, {
                         recursive: true
                     });
                 }
@@ -148,7 +188,7 @@ export class RedisService {
         }
 
         if(!container) {
-            await this.dockerService.pullImage("redis:latest");
+            await this.dockerService.pullImage(`${service.image}:${service.imageVersion}`);
 
             const volumes: string[] = [];
 
@@ -160,22 +200,23 @@ export class RedisService {
 
                 case "filesystem":
                 default: {
-                    await this.pluginConfigService.mkdir(service.name, {
+                    this.fs.mkdir(service.name, {
                         recursive: true
                     });
 
-                    volumes.push(`${this.pluginConfigService.dataPath(service.name)}:/data`)
+                    volumes.push(`${this.fs.path(service.name)}:/data`)
                     break;
                 }
             }
 
             container = await this.dockerService.createContainer({
                 name: service.containerName,
-                image: "redis:latest",
+                image: `${service.image}:${service.imageVersion}`,
                 restart: "always",
                 env: {
-                    VIRTUAL_HOST: service.containerName,
+                    VIRTUAL_HOST: service.containerName
                 },
+
                 volumes
             });
         }
@@ -188,7 +229,32 @@ export class RedisService {
 
         if(!Running) {
             await container.start();
+
+            console.info(`Redis "${service.name}" service started`);
         }
+    }
+
+    public async upgrade(name?: string, storage?: string, volume?: string, image?: string, imageVersion?: string) {
+        const service = this.config.getServiceOrDefault(name);
+
+        if(storage && ![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
+            throw new Error("Invalid storage type");
+        }
+
+        if(volume) {
+            service.volume = volume;
+        }
+
+        if(image) {
+            service.image = image;
+        }
+
+        if(imageVersion) {
+            service.imageVersion = imageVersion;
+        }
+
+        this.config.setService(service);
+        this.config.save();
     }
 
     public async stop(name?: string): Promise<void> {
@@ -265,9 +331,9 @@ export class RedisService {
     }
 
     public async getConfig(): Promise<Config> {
-        if(!this.config) {
-            const data: ConfigProps = this.pluginConfigService.exists("config.json")
-                ? await this.pluginConfigService.readJSON("config.json")
+        if(!this._config) {
+            const data: ConfigProps = this.fs.exists("config.json")
+                ? this.fs.readJSON("config.json")
                 : {
                     defaultService: "default",
                     services: [
@@ -280,21 +346,21 @@ export class RedisService {
 
             const _this = this;
 
-            this.config = new class extends Config {
+            this._config = new class extends Config {
                 public async save(): Promise<void> {
-                    await _this.pluginConfigService.writeJSON("config.json", this.toJSON());
+                    await _this.fs.writeJSON("config.json", this.toJSON());
                 }
             }(data);
         }
 
-        return this.config;
+        return this._config;
     }
 
     public async getListTable(): Promise<string> {
         const config = await this.getConfig();
 
         const table = new CliTable({
-            head: ["Name", "Host", "Storage"]
+            head: ["Name", "Host", "Storage", "Image"]
         });
 
         for(const service of config.services || []) {
@@ -302,6 +368,7 @@ export class RedisService {
                 service.name + (config.default === service.name ? " (default)" : ""),
                 service.isExternal ? service.host : service.containerName,
                 service.storage === REDIS_STORAGE_VOLUME ? service.volume : "",
+                `${service.image}:${service.imageVersion}`
             ]);
         }
 
@@ -309,8 +376,7 @@ export class RedisService {
     }
 
     public async update(name?: string, storage?: string, volume?: string): Promise<void> {
-        const config = await this.getConfig();
-        const service = config.getServiceOrDefault(name);
+        const service = this.config.getServiceOrDefault(name);
 
         if(storage && ![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
             throw new Error("Invalid storage type");
@@ -320,9 +386,8 @@ export class RedisService {
             service.volume = volume;
         }
 
-        config.setService(service);
-
-        await config.save();
+        this.config.setService(service);
+        this.config.save();
     }
 
     public async changeDomain(domain: string): Promise<void> {

@@ -74,13 +74,47 @@ export class RedisController {
         @Param("service")
         service?: string,
         @Option("restart", {
+            type: "boolean",
             alias: "r",
             description: "Restart redis service"
         })
         restart?: boolean
     ): Promise<void> {
-        await this.redisService.start(service);
+        await this.redisService.start(service, restart);
         await this.redisService.startCommander();
+    }
+
+    @Command("redis:upgrade [service]")
+    @Description("Upgrades a Redis service to a specified image and version.")
+    public async upgrade(
+        @Param("service")
+        name?: string,
+        @Option("storage", {
+            type: "string",
+            alias: "s",
+            description: "Specify storage type"
+        })
+        storage?: string,
+        @Option("volume", {
+            type: "string",
+            alias: "v",
+            description: "Specify volume name"
+        })
+        volume?: string,
+        @Option("image", {
+            type: "string",
+            alias: "i",
+            description: "Redis image name"
+        })
+        image?: string,
+        @Option("image-version", {
+            type: "string",
+            alias: "I",
+            description: "Redis image version"
+        })
+        imageVersion?: string
+    ): Promise<void> {
+        await this.redisService.upgrade(name, storage, volume, image, imageVersion);
     }
 
     @Command("redis:stop [service]")
@@ -97,27 +131,6 @@ export class RedisController {
     @Description("Lists all available Redis service instances in a tabular format.")
     public async list(): Promise<string> {
         return this.redisService.getListTable();
-    }
-
-    @Command("redis:update [name]")
-    @Description("Updates a Redis service with configurable storage and volume options.")
-    public async update(
-        @Param("name")
-        name?: string,
-        @Option("storage", {
-            type: "string",
-            alias: "s",
-            description: "Specify storage type"
-        })
-        storage?: string,
-        @Option("volume", {
-            type: "string",
-            alias: "v",
-            description: "Specify volume name"
-        })
-        volume?: string
-    ): Promise<void> {
-        await this.redisService.update(name, storage, volume);
     }
 
     @Command("redis:set-domain <domain>")
