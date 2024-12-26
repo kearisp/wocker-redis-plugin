@@ -9,12 +9,16 @@ export type ServiceProps = ConfigProperties & {
     host?: string;
     storage?: RedisStorageType;
     volume?: string;
+    image?: string;
+    imageVersion?: string;
 };
 
 export class Service extends Config<ServiceProps> {
     public host?: string;
     public storage?: RedisStorageType;
     public volume?: string;
+    public image: string;
+    public imageVersion: string;
 
     public constructor(data: ServiceProps) {
         super(data);
@@ -22,7 +26,9 @@ export class Service extends Config<ServiceProps> {
         const {
             host,
             storage,
-            volume
+            volume,
+            image = "redis",
+            imageVersion = "latest"
         } = data;
 
         this.host = host;
@@ -37,6 +43,9 @@ export class Service extends Config<ServiceProps> {
         if(this.storage === "volume" && !this.volume) {
             this.volume = this.defaultVolumeName;
         }
+
+        this.image = image;
+        this.imageVersion = imageVersion;
     }
 
     public get isExternal(): boolean {

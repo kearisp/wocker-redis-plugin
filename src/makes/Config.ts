@@ -80,6 +80,16 @@ export abstract class Config {
         return service;
     }
 
+    public hasDefaultService(): boolean {
+        if(!this.default) {
+            return false;
+        }
+
+        return !!this.services.find((service) => {
+            return service.name === this.default;
+        });
+    }
+
     public abstract save(): Promise<void>;
 
     public toJSON(): ConfigProps {

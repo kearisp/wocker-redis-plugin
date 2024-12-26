@@ -40,11 +40,23 @@ export class RedisController {
     @Description("Stops and removes the specified Redis service instance and restarts the Redis Commander interface.")
     public async destroy(
         @Param("service")
-        service: string
+        service: string,
+        @Option("force", {
+            type: "boolean",
+            alias: "f",
+            description: "Force destruction without prompts"
+        })
+        force?: boolean,
+        @Option("yes", {
+            type: "boolean",
+            alias: "y",
+            description: "Skip confirmation"
+        })
+        yes?: boolean
     ): Promise<void> {
         await this.redisService.stop(service);
+        await this.redisService.destroy(service, force, yes);
         await this.redisService.startCommander();
-        await this.redisService.destroy(service);
     }
 
     @Command("redis:use <service>")

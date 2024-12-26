@@ -1,5 +1,5 @@
 import {AppConfigService, DockerService, Injectable, PluginConfigService, ProxyService} from "@wocker/core";
-import {promptSelect, promptText} from "@wocker/utils";
+import {promptSelect, promptText, promptConfirm} from "@wocker/utils";
 import CliTable from "cli-table3";
 
 import {Config, ConfigProps} from "../makes/Config";
@@ -70,10 +70,10 @@ export class RedisService {
         console.info(`Service ${service.name} created`);
     }
 
-    public async destroy(name: string): Promise<void> {
+    public async destroy(name: string, force?: boolean, yes?: boolean): Promise<void> {
         const config = await this.getConfig();
 
-        if(config.default === name) {
+        if(!force && config.default === name) {
             throw new Error("Can't delete default service");
         }
 
@@ -81,6 +81,17 @@ export class RedisService {
 
         if(!service) {
             throw new Error(`Service ${name} not found`);
+        }
+
+        if(!yes) {
+            const confirm = await promptConfirm({
+                message: `Are you sure you want to delete the "${service.name}" service? This action cannot be undone and all data will be lost.`,
+                default: false
+            });
+
+            if(!confirm) {
+                throw new Error("Aborted");
+            }
         }
 
         switch(service.storage) {
@@ -121,9 +132,20 @@ export class RedisService {
 
     public async start(name?: string, restart?: boolean): Promise<void> {
         const config = await this.getConfig();
+
+        if(!name && !config.hasDefaultService()) {
+            await this.create();
+        }
+
         const service = config.getServiceOrDefault(name);
 
         let container = await this.dockerService.getContainer(service.containerName);
+
+        if(restart && container) {
+            await this.dockerService.removeContainer(service.containerName);
+
+            container = null
+        }
 
         if(!container) {
             await this.dockerService.pullImage("redis:latest");
