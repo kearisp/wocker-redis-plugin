@@ -237,8 +237,12 @@ export class RedisService {
     public async upgrade(name?: string, storage?: string, volume?: string, image?: string, imageVersion?: string) {
         const service = this.config.getServiceOrDefault(name);
 
-        if(storage && ![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
-            throw new Error("Invalid storage type");
+        if(storage) {
+            if(![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
+                throw new Error("Invalid storage type");
+            }
+
+            service.storage = storage;
         }
 
         if(volume) {
