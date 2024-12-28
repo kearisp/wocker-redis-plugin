@@ -11,7 +11,12 @@ import {promptSelect, promptText, promptConfirm} from "@wocker/utils";
 import CliTable from "cli-table3";
 
 import {Config, ConfigProps} from "../makes/Config";
-import {REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME, RedisStorageType, Service} from "../makes/Service";
+import {
+    REDIS_STORAGE_FILESYSTEM,
+    REDIS_STORAGE_VOLUME,
+    RedisStorageType,
+    Service
+} from "../makes/Service";
 
 
 @Injectable()
@@ -234,7 +239,7 @@ export class RedisService {
         }
     }
 
-    public async upgrade(name?: string, storage?: string, volume?: string, image?: string, imageVersion?: string) {
+    public async upgrade(name?: string, storage?: RedisStorageType, volume?: string, image?: string, imageVersion?: string) {
         const service = this.config.getServiceOrDefault(name);
 
         if(storage) {
