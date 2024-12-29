@@ -94,7 +94,7 @@ export class RedisController {
             alias: "s",
             description: "Specify storage type"
         })
-        storage?: string,
+        storage?: RedisStorageType,
         @Option("volume", {
             type: "string",
             alias: "v",
