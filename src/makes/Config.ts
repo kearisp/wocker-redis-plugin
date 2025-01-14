@@ -28,6 +28,14 @@ export abstract class Config {
         });
     }
 
+    public hasService(name: string): boolean {
+        const service = this.services.find((service) => {
+            return service.name === name;
+        });
+
+        return !!service;
+    }
+
     public setService(service: Service): void {
         let exists = false;
 
@@ -42,12 +50,20 @@ export abstract class Config {
         if(!exists) {
             this.services.push(service);
         }
+
+        if(!this.default) {
+            this.default = service.name;
+        }
     }
 
     public removeService(name: string): void {
         this.services = this.services.filter((service) => {
             return service.name !== name;
         });
+
+        if(this.default === name) {
+            delete this.default;
+        }
     }
 
     public getService(name: string): Service | undefined {

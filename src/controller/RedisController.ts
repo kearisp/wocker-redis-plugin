@@ -31,9 +31,21 @@ export class RedisController {
             type: "string",
             alias: "s"
         })
-        storage?: RedisStorageType
+        storage?: RedisStorageType,
+        @Option("image", {
+            type: "string",
+            alias: "i",
+            description: "The image name to start the service with"
+        })
+        image?: string,
+        @Option("image-version", {
+            type: "string",
+            alias: "I",
+            description: "The image version to start the service with"
+        })
+        imageVersion?: string
     ): Promise<void> {
-        await this.redisService.create(service, host, storage);
+        await this.redisService.create(service, host, storage, image, imageVersion);
     }
 
     @Command("redis:destroy <service>")
@@ -104,13 +116,13 @@ export class RedisController {
         @Option("image", {
             type: "string",
             alias: "i",
-            description: "Redis image name"
+            description: "The image name to start the service with"
         })
         image?: string,
         @Option("image-version", {
             type: "string",
             alias: "I",
-            description: "Redis image version"
+            description: "The image version to start the service with"
         })
         imageVersion?: string
     ): Promise<void> {
