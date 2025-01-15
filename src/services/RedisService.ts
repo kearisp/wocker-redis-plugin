@@ -115,7 +115,7 @@ export class RedisService {
         this.config.setService(service);
         this.config.save();
 
-        console.info(`Service ${service.name} created`);
+        console.info(`Service "${service.name}" created`);
     }
 
     public async destroy(name: string, force?: boolean, yes?: boolean): Promise<void> {

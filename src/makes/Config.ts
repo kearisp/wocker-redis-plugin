@@ -101,9 +101,7 @@ export abstract class Config {
             return false;
         }
 
-        return !!this.services.find((service) => {
-            return service.name === this.default;
-        });
+        return this.hasService(this.default);
     }
 
     public abstract save(): void;
