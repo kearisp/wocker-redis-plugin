@@ -64,17 +64,23 @@ export class RedisService {
         return new FileSystem(this.pluginDir);
     }
 
-    public async create(name?: string, host?: string, storage?: RedisStorageType): Promise<void> {
-        const config = await this.getConfig();
-
-        if(!name) {
+    public async create(name?: string, host?: string, storage?: RedisStorageType, imageName?: string, imageVersion?: string): Promise<void> {
+        if(!name || this.config.hasService(name)) {
             name = await promptText({
-                message: "Service name:"
-            }) as string;
-        }
+                message: "Service name:",
+                type: "string",
+                validate: (name?: string) => {
+                    if(!name) {
+                        return "Name is required";
+                    }
 
-        if(config.getService(name)) {
-            throw new Error(`Service ${name} already exists`);
+                    if(this.config.hasService(name)) {
+                        return `Service name "${name}" is already taken`;
+                    }
+
+                    return true;
+                }
+            }) as string;
         }
 
         if(!host) {
@@ -101,28 +107,23 @@ export class RedisService {
         const service = new Service({
             name,
             host,
-            storage
+            storage,
+            imageName,
+            imageVersion
         });
 
-        config.setService(service);
+        this.config.setService(service);
+        this.config.save();
 
-        if(!config.default) {
-            config.default = name;
-        }
-
-        await config.save();
-
-        console.info(`Service ${service.name} created`);
+        console.info(`Service "${service.name}" created`);
     }
 
     public async destroy(name: string, force?: boolean, yes?: boolean): Promise<void> {
-        const config = await this.getConfig();
-
-        if(!force && config.default === name) {
+        if(!force && this.config.default === name) {
             throw new Error("Can't delete default service");
         }
 
-        const service = config.getService(name);
+        const service = this.config.getService(name);
 
         if(!service) {
             throw new Error(`Service ${name} not found`);
@@ -157,32 +158,28 @@ export class RedisService {
             }
         }
 
-        config.removeService(name);
-
-        await config.save();
+        this.config.removeService(name);
+        this.config.save();
     }
 
     public async use(name: string): Promise<void> {
-        const config = await this.getConfig();
-        const service = config.getService(name);
+        const service = this.config.getService(name);
 
         if(!service) {
             throw new Error(`Service "${name}" does not exist`);
         }
 
-        config.default = name;
+        this.config.default = name;
 
-        await config.save();
+        this.config.save();
     }
 
     public async start(name?: string, restart?: boolean): Promise<void> {
-        const config = await this.getConfig();
-
-        if(!name && !config.hasDefaultService()) {
+        if(!name && !this.config.hasDefaultService()) {
             await this.create();
         }
 
-        const service = config.getServiceOrDefault(name);
+        const service = this.config.getServiceOrDefault(name);
 
         let container = await this.dockerService.getContainer(service.containerName);
 
@@ -193,7 +190,7 @@ export class RedisService {
         }
 
         if(!container) {
-            await this.dockerService.pullImage(`${service.image}:${service.imageVersion}`);
+            await this.dockerService.pullImage(service.imageTag);
 
             const volumes: string[] = [];
 
@@ -216,12 +213,11 @@ export class RedisService {
 
             container = await this.dockerService.createContainer({
                 name: service.containerName,
-                image: `${service.image}:${service.imageVersion}`,
+                image: service.imageTag,
                 restart: "always",
                 env: {
                     VIRTUAL_HOST: service.containerName
                 },
-
                 volumes
             });
         }
@@ -255,7 +251,7 @@ export class RedisService {
         }
 
         if(image) {
-            service.image = image;
+            service.imageName = image;
         }
 
         if(imageVersion) {
@@ -267,15 +263,12 @@ export class RedisService {
     }
 
     public async stop(name?: string): Promise<void> {
-        const config = await this.getConfig();
-        const service = config.getServiceOrDefault(name);
+        const service = this.config.getServiceOrDefault(name);
 
         await this.dockerService.removeContainer(service.containerName);
     }
 
     public async startCommander(): Promise<void> {
-        const config = await this.getConfig();
-
         await this.dockerService.removeContainer(this.commander);
 
         let container = await this.dockerService.getContainer(this.commander);
@@ -285,7 +278,7 @@ export class RedisService {
 
             const redisHosts: string[] = [];
 
-            for(const service of config.services) {
+            for(const service of this.config.services) {
                 let host: string;
 
                 if(service.host) {
@@ -310,7 +303,7 @@ export class RedisService {
                 image: "rediscommander/redis-commander:latest",
                 restart: "always",
                 env: {
-                    VIRTUAL_HOST: config.adminDomain,
+                    VIRTUAL_HOST: this.config.adminDomain,
                     VIRTUAL_PORT: "8081",
                     REDIS_HOSTS: redisHosts.join(",")
                 }
@@ -327,22 +320,21 @@ export class RedisService {
             await container.start();
             await this.proxyService.start();
 
-            console.info(`Redis commander started at http://${config.adminDomain}`);
+            console.info(`Redis commander started at http://${this.config.adminDomain}`);
         }
     }
 
     public async getServiceNames(): Promise<string[]> {
-        const config = await this.getConfig();
-
-        return config.services.map((service) => {
+        return this.config.services.map((service) => {
             return service.name;
         });
     }
 
     public async getConfig(): Promise<Config> {
         if(!this._config) {
-            const data: ConfigProps = this.fs.exists("config.json")
-                ? this.fs.readJSON("config.json")
+            const fs = this.fs,
+                data: ConfigProps = fs.exists("config.json")
+                ? fs.readJSON("config.json")
                 : {
                     defaultService: "default",
                     services: [
@@ -353,11 +345,15 @@ export class RedisService {
                     ]
                 };
 
-            const _this = this;
-
             this._config = new class extends Config {
-                public async save(): Promise<void> {
-                    await _this.fs.writeJSON("config.json", this.toJSON());
+                public save(): void {
+                    if(!fs.exists("")) {
+                        fs.mkdir("", {
+                            recursive: true
+                        });
+                    }
+
+                    fs.writeJSON("config.json", this.toJSON());
                 }
             }(data);
         }
@@ -377,33 +373,50 @@ export class RedisService {
                 service.name + (config.default === service.name ? " (default)" : ""),
                 service.isExternal ? service.host : service.containerName,
                 service.storage === REDIS_STORAGE_VOLUME ? service.volume : "",
-                `${service.image}:${service.imageVersion}`
+                service.imageTag
             ]);
         }
 
         return table.toString();
     }
 
-    public async update(name?: string, storage?: string, volume?: string): Promise<void> {
+    public async update(name?: string, storage?: string, volume?: string, imageName?: string, imageVersion?: string): Promise<void> {
         const service = this.config.getServiceOrDefault(name);
+        let changed = false;
 
-        if(storage && ![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
-            throw new Error("Invalid storage type");
+        if(storage) {
+            if(![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
+                throw new Error("Invalid storage type");
+            }
+
+            service.storage = storage as RedisStorageType;
+            changed = true;
         }
 
         if(volume) {
             service.volume = volume;
+            changed = true;
         }
 
-        this.config.setService(service);
-        this.config.save();
+        if(imageName) {
+            service.imageName = imageName;
+            changed = true;
+        }
+
+        if(imageVersion) {
+            service.imageVersion = imageVersion;
+            changed = true;
+        }
+
+        if(changed) {
+            this.config.setService(service);
+            this.config.save();
+        }
     }
 
     public async changeDomain(domain: string): Promise<void> {
-        const config = await this.getConfig();
+        this.config.adminDomain = domain;
 
-        config.adminDomain = domain;
-
-        await config.save();
+        this.config.save();
     }
 }

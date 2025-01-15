@@ -9,7 +9,9 @@ export type ServiceProps = ConfigProperties & {
     host?: string;
     storage?: RedisStorageType;
     volume?: string;
+    // @deprecated
     image?: string;
+    imageName?: string;
     imageVersion?: string;
 };
 
@@ -17,7 +19,7 @@ export class Service extends Config<ServiceProps> {
     public host?: string;
     public storage?: RedisStorageType;
     public volume?: string;
-    public image: string;
+    public imageName: string;
     public imageVersion: string;
 
     public constructor(data: ServiceProps) {
@@ -27,7 +29,8 @@ export class Service extends Config<ServiceProps> {
             host,
             storage,
             volume,
-            image = "redis",
+            image,
+            imageName = image || "redis",
             imageVersion = "latest"
         } = data;
 
@@ -44,12 +47,16 @@ export class Service extends Config<ServiceProps> {
             this.volume = this.defaultVolumeName;
         }
 
-        this.image = image;
+        this.imageName = imageName;
         this.imageVersion = imageVersion;
     }
 
     public get isExternal(): boolean {
         return !!this.host;
+    }
+
+    public get imageTag(): string {
+        return `${this.imageName}:${this.imageVersion}`;
     }
 
     public get containerName(): string {
