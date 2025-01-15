@@ -190,7 +190,7 @@ export class RedisService {
         }
 
         if(!container) {
-            await this.dockerService.pullImage(`${service.imageName}:${service.imageVersion}`);
+            await this.dockerService.pullImage(service.imageTag);
 
             const volumes: string[] = [];
 
@@ -213,7 +213,7 @@ export class RedisService {
 
             container = await this.dockerService.createContainer({
                 name: service.containerName,
-                image: `${service.imageName}:${service.imageVersion}`,
+                image: service.imageTag,
                 restart: "always",
                 env: {
                     VIRTUAL_HOST: service.containerName
