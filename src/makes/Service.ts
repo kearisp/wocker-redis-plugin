@@ -1,9 +1,9 @@
 import {Config, ConfigProperties} from "@wocker/core";
 
 
-export const REDIS_STORAGE_FILESYSTEM = "filesystem";
 export const REDIS_STORAGE_VOLUME = "volume";
-export type RedisStorageType = typeof REDIS_STORAGE_FILESYSTEM | typeof REDIS_STORAGE_VOLUME;
+export const REDIS_STORAGE_FILESYSTEM = "filesystem";
+export type RedisStorageType = typeof REDIS_STORAGE_VOLUME | typeof REDIS_STORAGE_FILESYSTEM;
 
 export type ServiceProps = ConfigProperties & {
     host?: string;
@@ -18,7 +18,7 @@ export type ServiceProps = ConfigProperties & {
 export class Service extends Config<ServiceProps> {
     public host?: string;
     public storage?: RedisStorageType;
-    public volume?: string;
+    protected _volume?: string;
     public imageName: string;
     public imageVersion: string;
 
@@ -36,19 +36,13 @@ export class Service extends Config<ServiceProps> {
 
         this.host = host;
         this.storage = storage;
-
-        if(!this.isExternal && !this.storage) {
-            this.storage = "filesystem";
-        }
-
-        this.volume = volume;
-
-        if(this.storage === "volume" && !this.volume) {
-            this.volume = this.defaultVolumeName;
-        }
-
+        this._volume = volume;
         this.imageName = imageName;
         this.imageVersion = imageVersion;
+
+        if(!this.isExternal && !this.storage) {
+            this.storage = REDIS_STORAGE_FILESYSTEM;
+        }
     }
 
     public get isExternal(): boolean {
@@ -63,25 +57,29 @@ export class Service extends Config<ServiceProps> {
         return `redis-${this.name}.ws`;
     }
 
-    public get volumeName(): string {
-        if(!this.volume) {
-            return this.defaultVolumeName;
+    public set volume(volume: string) {
+        this._volume = volume;
+    }
+
+    public get volume(): string {
+        if(!this._volume) {
+            this._volume = this.defaultVolumeName;
         }
 
-        return this.volume;
+        return this._volume;
     }
 
     public get defaultVolumeName(): string {
         return `wocker-redis-${this.name}`;
     }
 
-    public toJSON(): ServiceProps {
+    public toObject(): ServiceProps {
         return {
             name: this.name,
             host: this.host,
             storage: this.storage,
-            volume: this.volume && this.volume !== this.defaultVolumeName
-                ? this.volume
+            volume: this._volume && this._volume !== this.defaultVolumeName
+                ? this._volume
                 : undefined
         };
     }
