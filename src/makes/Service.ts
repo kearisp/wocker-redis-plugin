@@ -80,7 +80,9 @@ export class Service extends Config<ServiceProps> {
             storage: this.storage,
             volume: this._volume && this._volume !== this.defaultVolumeName
                 ? this._volume
-                : undefined
+                : undefined,
+            imageName: this.imageName,
+            imageVersion: this.imageVersion
         };
     }
 }
