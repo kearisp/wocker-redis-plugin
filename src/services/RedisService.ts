@@ -1,22 +1,17 @@
 import {
     AppConfigService,
     DockerService,
-    Injectable,
-    Inject,
-    ProxyService,
     FileSystem,
-    PLUGIN_DIR_KEY
+    Inject,
+    Injectable,
+    PLUGIN_DIR_KEY,
+    ProxyService
 } from "@wocker/core";
-import {promptSelect, promptText, promptConfirm} from "@wocker/utils";
+import {promptConfirm, promptSelect, promptText} from "@wocker/utils";
 import CliTable from "cli-table3";
 
-import {Config, ConfigProps} from "../makes/Config";
-import {
-    REDIS_STORAGE_FILESYSTEM,
-    REDIS_STORAGE_VOLUME,
-    RedisStorageType,
-    Service
-} from "../makes/Service";
+import {Config} from "../makes/Config";
+import {REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME, RedisStorageType, Service} from "../makes/Service";
 
 
 @Injectable()
@@ -119,14 +114,10 @@ export class RedisService {
     }
 
     public async destroy(name: string, force?: boolean, yes?: boolean): Promise<void> {
-        if(!force && this.config.default === name) {
-            throw new Error("Can't delete default service");
-        }
-
         const service = this.config.getService(name);
 
-        if(!service) {
-            throw new Error(`Service ${name} not found`);
+        if(!force && this.config.default === name) {
+            throw new Error("Can't delete default service");
         }
 
         if(!yes) {
@@ -141,14 +132,14 @@ export class RedisService {
         }
 
         switch(service.storage) {
-            case "volume": {
-                if(await this.dockerService.hasVolume(service.volumeName)) {
-                    await this.dockerService.rmVolume(service.volumeName);
+            case REDIS_STORAGE_VOLUME: {
+                if(await this.dockerService.hasVolume(service.volume)) {
+                    await this.dockerService.rmVolume(service.volume);
                 }
                 break;
             }
 
-            case "filesystem": {
+            case REDIS_STORAGE_FILESYSTEM: {
                 if(this.fs.exists(service.name)) {
                     this.fs.rm(service.name, {
                         recursive: true
@@ -165,11 +156,7 @@ export class RedisService {
     public async use(name: string): Promise<void> {
         const service = this.config.getService(name);
 
-        if(!service) {
-            throw new Error(`Service "${name}" does not exist`);
-        }
-
-        this.config.default = name;
+        this.config.default = service.name;
 
         this.config.save();
     }
@@ -195,12 +182,12 @@ export class RedisService {
             const volumes: string[] = [];
 
             switch(service.storage) {
-                case "volume": {
-                    volumes.push(`${service.volumeName}:/data`);
+                case REDIS_STORAGE_VOLUME: {
+                    volumes.push(`${service.volume}:/data`);
                     break;
                 }
 
-                case "filesystem":
+                case REDIS_STORAGE_FILESYSTEM:
                 default: {
                     this.fs.mkdir(service.name, {
                         recursive: true
@@ -330,47 +317,14 @@ export class RedisService {
         });
     }
 
-    public async getConfig(): Promise<Config> {
-        if(!this._config) {
-            const fs = this.fs,
-                data: ConfigProps = fs.exists("config.json")
-                ? fs.readJSON("config.json")
-                : {
-                    defaultService: "default",
-                    services: [
-                        {
-                            name: "default",
-                            storage: "volume"
-                        }
-                    ]
-                };
-
-            this._config = new class extends Config {
-                public save(): void {
-                    if(!fs.exists("")) {
-                        fs.mkdir("", {
-                            recursive: true
-                        });
-                    }
-
-                    fs.writeJSON("config.json", this.toJSON());
-                }
-            }(data);
-        }
-
-        return this._config;
-    }
-
     public async getListTable(): Promise<string> {
-        const config = await this.getConfig();
-
         const table = new CliTable({
             head: ["Name", "Host", "Storage", "Image"]
         });
 
-        for(const service of config.services || []) {
+        for(const service of this.config.services || []) {
             table.push([
-                service.name + (config.default === service.name ? " (default)" : ""),
+                service.name + (this.config.default === service.name ? " (default)" : ""),
                 service.isExternal ? service.host : service.containerName,
                 service.storage === REDIS_STORAGE_VOLUME ? service.volume : "",
                 service.imageTag

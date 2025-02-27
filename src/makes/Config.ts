@@ -66,34 +66,32 @@ export abstract class Config {
         }
     }
 
-    public getService(name: string): Service | undefined {
-        return this.services.find((service) => {
+    public getService(name: string): Service {
+        const service = this.services.find((service) => {
             return service.name === name;
         });
+
+        if(!service) {
+            throw new Error(`Service "${name}" not found`);
+        }
+
+        return service;
     }
 
-    public getDefaultService(): Service | undefined {
+    public getDefaultService(): Service {
         if(!this.default) {
-            return;
+            throw new Error("No services are installed by default");
         }
 
         return this.getService(this.default);
     }
 
-    public getServiceOrDefault(name?: string) {
-        const service = name
-            ? this.getService(name)
-            : this.getDefaultService();
-
-        if(!service) {
-            throw new Error(
-                name
-                    ? `Service "${name}" not found`
-                    : `Default service not found`
-            );
+    public getServiceOrDefault(name?: string): Service {
+        if(!name) {
+            return this.getDefaultService();
         }
 
-        return service;
+        return this.getService(name);
     }
 
     public hasDefaultService(): boolean {

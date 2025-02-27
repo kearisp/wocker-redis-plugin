@@ -1,6 +1,6 @@
 {
     "name": "@wocker/redis-plugin",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "author": "Kris Papercut <krispcut@gmail.com>",
     "description": "Redis plugin for wocker",
     "license": "MIT",
