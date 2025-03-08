@@ -1,11 +1,9 @@
-import {Config, ConfigProperties} from "@wocker/core";
-
-
 export const REDIS_STORAGE_VOLUME = "volume";
 export const REDIS_STORAGE_FILESYSTEM = "filesystem";
 export type RedisStorageType = typeof REDIS_STORAGE_VOLUME | typeof REDIS_STORAGE_FILESYSTEM;
 
-export type ServiceProps = ConfigProperties & {
+export type ServiceProps = {
+    name: string;
     host?: string;
     storage?: RedisStorageType;
     volume?: string;
@@ -15,7 +13,8 @@ export type ServiceProps = ConfigProperties & {
     imageVersion?: string;
 };
 
-export class Service extends Config<ServiceProps> {
+export class Service {
+    public name: string;
     public host?: string;
     public storage?: RedisStorageType;
     protected _volume?: string;
@@ -23,9 +22,8 @@ export class Service extends Config<ServiceProps> {
     public imageVersion: string;
 
     public constructor(data: ServiceProps) {
-        super(data);
-
         const {
+            name,
             host,
             storage,
             volume,
@@ -34,6 +32,7 @@ export class Service extends Config<ServiceProps> {
             imageVersion = "latest"
         } = data;
 
+        this.name = name;
         this.host = host;
         this.storage = storage;
         this._volume = volume;
