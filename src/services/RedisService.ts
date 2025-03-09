@@ -43,7 +43,7 @@ export class RedisService {
                         });
                     }
 
-                    fs.writeJSON("config.json", this.toJSON());
+                    fs.writeJSON("config.json", this.toObject());
                 }
             }(data);
         }
