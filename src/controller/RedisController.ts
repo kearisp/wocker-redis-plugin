@@ -146,6 +146,7 @@ export class RedisController {
     }
 
     @Command("redis:set-domain <domain>")
+    @Description("Sets redis admin domain")
     public async changeDomain(
         @Param("domain")
         domain: string
