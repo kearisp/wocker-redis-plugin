@@ -1,5 +1,4 @@
 import {Plugin, PluginConfigService} from "@wocker/core";
-
 import {RedisController} from "./controller/RedisController";
 import {RedisService} from "./services/RedisService";
 

@@ -7,9 +7,8 @@ import {
     PLUGIN_DIR_KEY,
     ProxyService
 } from "@wocker/core";
-import {promptConfirm, promptSelect, promptText} from "@wocker/utils";
+import {promptInput, promptConfirm, promptSelect} from "@wocker/utils";
 import CliTable from "cli-table3";
-
 import {Config} from "../makes/Config";
 import {REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME, RedisStorageType, Service} from "../makes/Service";
 
@@ -61,9 +60,9 @@ export class RedisService {
 
     public async create(name?: string, host?: string, storage?: RedisStorageType, imageName?: string, imageVersion?: string): Promise<void> {
         if(!name || this.config.hasService(name)) {
-            name = await promptText({
-                message: "Service name:",
-                type: "string",
+            name = await promptInput({
+                message: "Service name",
+                type: "text",
                 validate: (name?: string) => {
                     if(!name) {
                         return "Name is required";

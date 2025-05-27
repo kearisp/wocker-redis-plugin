@@ -6,12 +6,12 @@ import {
     Option,
     Param
 } from "@wocker/core";
-
 import {RedisStorageType} from "../makes/Service";
 import {RedisService} from "../services/RedisService";
 
 
 @Controller()
+@Description("Redis commands")
 export class RedisController {
     public constructor(
         protected readonly redisService: RedisService
@@ -22,27 +22,17 @@ export class RedisController {
     public async create(
         @Param("service")
         service?: string,
-        @Option("host", {
-            type: "string",
-            alias: "h"
-        })
+        @Option("host", "h")
+        @Description("Remote redis host")
         host?: string,
-        @Option("storage", {
-            type: "string",
-            alias: "s"
-        })
+        @Option("storage", "s")
+        @Description("Storage type")
         storage?: RedisStorageType,
-        @Option("image", {
-            type: "string",
-            alias: "i",
-            description: "The image name to start the service with"
-        })
+        @Option("image", "i")
+        @Description("The image name to start the service with")
         image?: string,
-        @Option("image-version", {
-            type: "string",
-            alias: "I",
-            description: "The image version to start the service with"
-        })
+        @Option("image-version", "I")
+        @Description("The image version to start the service with")
         imageVersion?: string
     ): Promise<void> {
         await this.redisService.create(service, host, storage, image, imageVersion);
@@ -53,17 +43,11 @@ export class RedisController {
     public async destroy(
         @Param("service")
         service: string,
-        @Option("force", {
-            type: "boolean",
-            alias: "f",
-            description: "Force destruction without prompts"
-        })
+        @Option("force", "f")
+        @Description("Force destruction without prompts")
         force?: boolean,
-        @Option("yes", {
-            type: "boolean",
-            alias: "y",
-            description: "Skip confirmation"
-        })
+        @Option("yes", "y")
+        @Description("Skip confirmation")
         yes?: boolean
     ): Promise<void> {
         await this.redisService.stop(service);
@@ -85,11 +69,8 @@ export class RedisController {
     public async start(
         @Param("service")
         service?: string,
-        @Option("restart", {
-            type: "boolean",
-            alias: "r",
-            description: "Restart redis service"
-        })
+        @Option("restart", "r")
+        @Description("Restart redis service")
         restart?: boolean
     ): Promise<void> {
         await this.redisService.start(service, restart);
@@ -101,29 +82,17 @@ export class RedisController {
     public async upgrade(
         @Param("service")
         name?: string,
-        @Option("storage", {
-            type: "string",
-            alias: "s",
-            description: "Specify storage type"
-        })
+        @Option("storage", "s")
+        @Description("Specify storage type")
         storage?: RedisStorageType,
-        @Option("volume", {
-            type: "string",
-            alias: "v",
-            description: "Specify volume name"
-        })
+        @Option("volume", "v")
+        @Description("Specify volume name")
         volume?: string,
-        @Option("image", {
-            type: "string",
-            alias: "i",
-            description: "The image name to start the service with"
-        })
+        @Option("image", "i")
+        @Description("The image name to start the service with")
         image?: string,
-        @Option("image-version", {
-            type: "string",
-            alias: "I",
-            description: "The image version to start the service with"
-        })
+        @Option("image-version", "I")
+        @Description("The image version to start the service with")
         imageVersion?: string
     ): Promise<void> {
         await this.redisService.upgrade(name, storage, volume, image, imageVersion);
