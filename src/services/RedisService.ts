@@ -289,7 +289,7 @@ export class RedisService {
                 image: "rediscommander/redis-commander:latest",
                 restart: "always",
                 env: {
-                    VIRTUAL_HOST: this.config.adminDomain,
+                    VIRTUAL_HOST: this.config.admin.domain,
                     VIRTUAL_PORT: "8081",
                     REDIS_HOSTS: redisHosts.join(",")
                 }
@@ -306,7 +306,7 @@ export class RedisService {
             await container.start();
             await this.proxyService.start();
 
-            console.info(`Redis commander started at http://${this.config.adminDomain}`);
+            console.info(`Redis commander started at http://${this.config.admin.domain}`);
         }
     }
 
@@ -368,8 +368,7 @@ export class RedisService {
     }
 
     public async changeDomain(domain: string): Promise<void> {
-        this.config.adminDomain = domain;
-
+        this.config.admin.domain = domain;
         this.config.save();
     }
 }
