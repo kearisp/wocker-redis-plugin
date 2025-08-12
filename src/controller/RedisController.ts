@@ -90,12 +90,31 @@ export class RedisController {
         volume?: string,
         @Option("image", "i")
         @Description("The image name to start the service with")
-        image?: string,
+        imageName?: string,
         @Option("image-version", "I")
         @Description("The image version to start the service with")
-        imageVersion?: string
+        imageVersion?: string,
+        @Option("enable-admin")
+        enableAdmin?: boolean,
+        @Option("disable-admin")
+        disableAdmin?: boolean
     ): Promise<void> {
-        await this.redisService.upgrade(name, storage, volume, image, imageVersion);
+        await this.redisService.upgrade(name, {
+            storage,
+            volume,
+            imageName,
+            imageVersion
+        });
+
+        if(enableAdmin) {
+            this.redisService.config.admin.enabled = true;
+            this.redisService.config.save();
+        }
+
+        if(disableAdmin) {
+            this.redisService.config.admin.enabled = false;
+            this.redisService.config.save();
+        }
     }
 
     @Command("redis:stop [service]")

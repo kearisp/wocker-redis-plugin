@@ -2,6 +2,13 @@
 
 ###### Docker workspace for web projects
 
+[![npm version](https://img.shields.io/npm/v/@wocker/redis-plugin.svg)](https://www.npmjs.com/package/@wocker/redis-plugin)
+[![Publish](https://github.com/kearisp/wocker-redis-plugin/actions/workflows/publish-latest.yml/badge.svg?event=release)](https://github.com/kearisp/wocker-redis-plugin/actions/workflows/publish-latest.yml)
+[![License](https://img.shields.io/npm/l/@wocker/redis-plugin)](https://github.com/kearisp/wocker-redis-plugin/blob/main/LICENSE)
+
+[![npm total downloads](https://img.shields.io/npm/dt/@wocker/redis-plugin.svg)](https://www.npmjs.com/package/@wocker/redis-plugin)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@wocker/redis-plugin)](https://bundlephobia.com/package/@wocker/redis-plugin)
+
 ## Installation
 
 **Note:** It is recommended to install Wocker globally to ensure accessibility from any directory in your terminal.
