@@ -10,7 +10,7 @@ import {
 import {promptInput, promptConfirm, promptSelect} from "@wocker/utils";
 import CliTable from "cli-table3";
 import {Config} from "../makes/Config";
-import {REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME, RedisStorageType, Service} from "../makes/Service";
+import {REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME, RedisStorageType, Service, ServiceProps} from "../makes/Service";
 
 
 @Injectable()
@@ -221,27 +221,27 @@ export class RedisService {
         }
     }
 
-    public async upgrade(name?: string, storage?: RedisStorageType, volume?: string, image?: string, imageVersion?: string) {
+    public async upgrade(name?: string, serviceProps: Partial<ServiceProps> = {}): Promise<void> {
         const service = this.config.getServiceOrDefault(name);
 
-        if(storage) {
-            if(![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
+        if(serviceProps.storage) {
+            if(![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(serviceProps.storage)) {
                 throw new Error("Invalid storage type");
             }
 
-            service.storage = storage;
+            service.storage = serviceProps.storage;
         }
 
-        if(volume) {
-            service.volume = volume;
+        if(serviceProps.volume) {
+            service.volume = serviceProps.volume;
         }
 
-        if(image) {
-            service.imageName = image;
+        if(serviceProps.imageName) {
+            service.imageName = serviceProps.imageName;
         }
 
-        if(imageVersion) {
-            service.imageVersion = imageVersion;
+        if(serviceProps.imageVersion) {
+            service.imageVersion = serviceProps.imageVersion;
         }
 
         this.config.setService(service);
@@ -289,7 +289,7 @@ export class RedisService {
                 image: "rediscommander/redis-commander:latest",
                 restart: "always",
                 env: {
-                    VIRTUAL_HOST: this.config.adminDomain,
+                    VIRTUAL_HOST: this.config.admin.domain,
                     VIRTUAL_PORT: "8081",
                     REDIS_HOSTS: redisHosts.join(",")
                 }
@@ -306,7 +306,7 @@ export class RedisService {
             await container.start();
             await this.proxyService.start();
 
-            console.info(`Redis commander started at http://${this.config.adminDomain}`);
+            console.info(`Redis commander started at http://${this.config.admin.domain}`);
         }
     }
 
@@ -368,8 +368,7 @@ export class RedisService {
     }
 
     public async changeDomain(domain: string): Promise<void> {
-        this.config.adminDomain = domain;
-
+        this.config.admin.domain = domain;
         this.config.save();
     }
 }

@@ -1,28 +1,38 @@
 import {Service, ServiceProps} from "./Service";
 
 
+type AdminConfig = {
+    enabled: boolean;
+    domain: string;
+};
+
 export type ConfigProps = {
     adminDomain?: string;
     default?: string;
     defaultService?: string;
     services?: ServiceProps[];
+    admin?: AdminConfig;
 };
 
 export abstract class Config {
-    public adminDomain: string;
     public default?: string;
     public services: Service[] = [];
+    public admin: AdminConfig;
 
     public constructor(data: ConfigProps) {
         const {
             adminDomain = "redis-commander.workspace",
             default: defaultService,
             defaultService: oldDefault,
-            services = []
+            services = [],
+            admin = {
+                enabled: true,
+                domain: adminDomain || "redis-commander.workspace",
+            }
         } = data;
 
-        this.adminDomain = adminDomain;
         this.default = defaultService || oldDefault;
+        this.admin = admin;
         this.services = (services || []).map((value) => {
             return new Service(value);
         });
@@ -106,13 +116,13 @@ export abstract class Config {
 
     public toObject(): ConfigProps {
         return {
-            adminDomain: this.adminDomain,
             default: this.default,
+            admin: this.admin,
             services: this.services.length > 0
                 ? this.services.map((service) => {
                     return service.toObject();
                 })
-                : undefined
+                : undefined,
         };
     }
 }
