@@ -257,6 +257,10 @@ export class RedisService {
     public async startCommander(): Promise<void> {
         await this.dockerService.removeContainer(this.commander);
 
+        if(!this.config.admin.enabled) {
+            return;
+        }
+
         let container = await this.dockerService.getContainer(this.commander);
 
         if(!container) {
