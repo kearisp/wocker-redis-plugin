@@ -28,23 +28,7 @@ export class RedisService {
 
     public get config(): Config {
         if(!this._config) {
-            const fs = this.fs;
-
-            const data = fs.exists("config.json")
-                ? fs.readJSON("config.json")
-                : {};
-
-            this._config = new class extends Config {
-                public save(): void {
-                    if(!fs.exists("")) {
-                        fs.mkdir("", {
-                            recursive: true
-                        });
-                    }
-
-                    fs.writeJSON("config.json", this.toObject());
-                }
-            }(data);
+            this._config = Config.make(this.fs);
         }
 
         return this._config;
@@ -335,40 +319,6 @@ export class RedisService {
         }
 
         return table.toString();
-    }
-
-    public async update(name?: string, storage?: string, volume?: string, imageName?: string, imageVersion?: string): Promise<void> {
-        const service = this.config.getServiceOrDefault(name);
-        let changed = false;
-
-        if(storage) {
-            if(![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
-                throw new Error("Invalid storage type");
-            }
-
-            service.storage = storage as RedisStorageType;
-            changed = true;
-        }
-
-        if(volume) {
-            service.volume = volume;
-            changed = true;
-        }
-
-        if(imageName) {
-            service.imageName = imageName;
-            changed = true;
-        }
-
-        if(imageVersion) {
-            service.imageVersion = imageVersion;
-            changed = true;
-        }
-
-        if(changed) {
-            this.config.setService(service);
-            this.config.save();
-        }
     }
 
     public async changeDomain(domain: string): Promise<void> {
