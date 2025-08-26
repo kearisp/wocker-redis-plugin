@@ -32,7 +32,7 @@ jobs:
                 node-version: 24
                 registry-url: 'https://registry.npmjs.org'
 
-          - name: Setup version
+          - name: Setup beta version
             uses: kearisp/npm-version-action@v0.0.1
             with:
                 tag: beta
