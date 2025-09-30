@@ -160,7 +160,7 @@ export class RedisService {
         }
 
         if(!container) {
-            await this.dockerService.pullImage(service.imageTag);
+            await this.dockerService.pullImage(service.image);
 
             const volumes: string[] = [];
 
@@ -183,7 +183,7 @@ export class RedisService {
 
             container = await this.dockerService.createContainer({
                 name: service.containerName,
-                image: service.imageTag,
+                image: service.image,
                 restart: "always",
                 env: {
                     VIRTUAL_HOST: service.containerName
@@ -314,7 +314,7 @@ export class RedisService {
                 service.name + (this.config.default === service.name ? " (default)" : ""),
                 service.isExternal ? service.host : service.containerName,
                 service.storage === REDIS_STORAGE_VOLUME ? service.volume : "",
-                service.imageTag
+                service.image
             ]);
         }
 
