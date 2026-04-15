@@ -1,5 +1,4 @@
 import {
-    AppConfigService,
     DockerService,
     FileSystem,
     Inject,
@@ -10,7 +9,8 @@ import {
 import {promptInput, promptConfirm, promptSelect} from "@wocker/utils";
 import CliTable from "cli-table3";
 import {Config} from "../makes/Config";
-import {REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME, RedisStorageType, Service, ServiceProps} from "../makes/Service";
+import {Service, ServiceProps} from "../makes/Service";
+import {StorageType} from "../types";
 
 
 @Injectable()
@@ -19,7 +19,6 @@ export class RedisService {
     protected _config?: Config;
 
     public constructor(
-        protected readonly appConfigService: AppConfigService,
         protected readonly dockerService: DockerService,
         protected readonly proxyService: ProxyService,
         @Inject(PLUGIN_DIR_KEY)
@@ -42,9 +41,9 @@ export class RedisService {
         return new FileSystem(this.pluginDir);
     }
 
-    public async create(name?: string, host?: string, storage?: RedisStorageType, imageName?: string, imageVersion?: string): Promise<void> {
-        if(!name || this.config.hasService(name)) {
-            name = await promptInput({
+    public async create(serviceProps: Partial<ServiceProps> = {}): Promise<void> {
+        if(!serviceProps.name || this.config.hasService(serviceProps.name)) {
+            serviceProps.name = await promptInput({
                 message: "Service name",
                 type: "text",
                 validate: (name?: string) => {
@@ -61,34 +60,45 @@ export class RedisService {
             }) as string;
         }
 
-        if(!host) {
-            if(!storage || ![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(storage)) {
-                storage = await promptSelect<RedisStorageType>({
+        if(!serviceProps.host) {
+            if(!serviceProps.storage || ![StorageType.FS, StorageType.VOLUME].includes(serviceProps.storage)) {
+                serviceProps.storage = await promptSelect<StorageType>({
                     message: "Storage type:",
                     options: [
                         {
                             label: "Volume",
-                            value: REDIS_STORAGE_VOLUME
+                            value: StorageType.VOLUME
                         },
                         {
                             label: "File System",
-                            value: REDIS_STORAGE_FILESYSTEM
+                            value: StorageType.FS
                         }
                     ]
                 });
             }
+
+            if(!serviceProps.containerPort) {
+                const needPort = await promptConfirm({
+                    message: "Do you need to expose container port?",
+                    default: false
+                });
+
+                if(needPort) {
+                    serviceProps.containerPort = await promptInput({
+                        required: true,
+                        message: "Container port:",
+                        type: "number",
+                        min: 1,
+                        default: 6379
+                    });
+                }
+            }
         }
         else {
-            storage = undefined;
+            serviceProps.storage = undefined;
         }
 
-        const service = new Service({
-            name,
-            host,
-            storage,
-            imageName,
-            imageVersion
-        });
+        const service = new Service(serviceProps as ServiceProps);
 
         this.config.setService(service);
         this.config.save();
@@ -115,14 +125,14 @@ export class RedisService {
         }
 
         switch(service.storage) {
-            case REDIS_STORAGE_VOLUME: {
+            case StorageType.VOLUME: {
                 if(await this.dockerService.hasVolume(service.volume)) {
                     await this.dockerService.rmVolume(service.volume);
                 }
                 break;
             }
 
-            case REDIS_STORAGE_FILESYSTEM: {
+            case StorageType.FS: {
                 if(this.fs.exists(service.name)) {
                     this.fs.rm(service.name, {
                         recursive: true
@@ -165,18 +175,18 @@ export class RedisService {
             const volumes: string[] = [];
 
             switch(service.storage) {
-                case REDIS_STORAGE_VOLUME: {
+                case StorageType.VOLUME: {
                     volumes.push(`${service.volume}:/data`);
                     break;
                 }
 
-                case REDIS_STORAGE_FILESYSTEM:
+                case StorageType.FS:
                 default: {
                     this.fs.mkdir(service.name, {
                         recursive: true
                     });
 
-                    volumes.push(`${this.fs.path(service.name)}:/data`)
+                    volumes.push(`${this.fs.path(service.name)}:/data`);
                     break;
                 }
             }
@@ -209,7 +219,7 @@ export class RedisService {
         const service = this.config.getServiceOrDefault(name);
 
         if(serviceProps.storage) {
-            if(![REDIS_STORAGE_FILESYSTEM, REDIS_STORAGE_VOLUME].includes(serviceProps.storage)) {
+            if(![StorageType.FS, StorageType.VOLUME].includes(serviceProps.storage)) {
                 throw new Error("Invalid storage type");
             }
 
@@ -220,12 +230,12 @@ export class RedisService {
             service.volume = serviceProps.volume;
         }
 
-        if(serviceProps.imageName) {
-            service.imageName = serviceProps.imageName;
+        if(serviceProps.image) {
+            service.image = serviceProps.image;
         }
 
-        if(serviceProps.imageVersion) {
-            service.imageVersion = serviceProps.imageVersion;
+        if(serviceProps.containerPort) {
+            service.containerPort = serviceProps.containerPort;
         }
 
         this.config.setService(service);
@@ -313,7 +323,7 @@ export class RedisService {
             table.push([
                 service.name + (this.config.default === service.name ? " (default)" : ""),
                 service.isExternal ? service.host : service.containerName,
-                service.storage === REDIS_STORAGE_VOLUME ? service.volume : "",
+                service.storage === StorageType.VOLUME ? service.volume : service.storage,
                 service.image
             ]);
         }
