@@ -6,8 +6,8 @@ import {
     Option,
     Param
 } from "@wocker/core";
-import {RedisStorageType} from "../makes/Service";
 import {RedisService} from "../services/RedisService";
+import {StorageType} from "../types";
 
 
 @Controller()
@@ -21,21 +21,27 @@ export class RedisController {
     @Description("Creates a new Redis service instance with optional configuration for host and storage type.")
     public async create(
         @Param("service")
-        service?: string,
+        name?: string,
         @Option("host", "h")
         @Description("Remote redis host")
         host?: string,
         @Option("storage", "s")
         @Description("Storage type")
-        storage?: RedisStorageType,
+        storage?: StorageType,
         @Option("image", "i")
         @Description("The image name to start the service with")
         image?: string,
-        @Option("image-version", "I")
-        @Description("The image version to start the service with")
-        imageVersion?: string
+        @Option("container-port")
+        @Description("Port on which the database container will be accessible on the host")
+        containerPort?: number
     ): Promise<void> {
-        await this.redisService.create(service, host, storage, image, imageVersion);
+        await this.redisService.create({
+            name,
+            host,
+            storage,
+            image,
+            containerPort
+        });
     }
 
     @Command("redis:destroy <service>")
@@ -55,12 +61,22 @@ export class RedisController {
         await this.redisService.startCommander();
     }
 
-    @Command("redis:use <service>")
+    @Command("redis:use [service]")
     @Description("Sets the specified Redis service as the current active service.")
     public async use(
         @Param("service")
-        service: string
-    ): Promise<void> {
+        service?: string
+    ): Promise<string | void> {
+        if(!service) {
+            const defaultService = this.redisService.config.getDefaultService();
+
+            if(!defaultService) {
+                throw new Error("No default service");
+            }
+
+            return defaultService.name;
+        }
+
         await this.redisService.use(service);
     }
 
@@ -84,26 +100,26 @@ export class RedisController {
         name?: string,
         @Option("storage", "s")
         @Description("Specify storage type")
-        storage?: RedisStorageType,
+        storage?: StorageType,
         @Option("volume", "v")
         @Description("Specify volume name")
         volume?: string,
         @Option("image", "i")
         @Description("The image name to start the service with")
-        imageName?: string,
-        @Option("image-version", "I")
-        @Description("The image version to start the service with")
-        imageVersion?: string,
+        image?: string,
         @Option("enable-admin")
         enableAdmin?: boolean,
         @Option("disable-admin")
-        disableAdmin?: boolean
+        disableAdmin?: boolean,
+        @Option("container-port")
+        @Description("Port on which the database container will be accessible on the host")
+        containerPort?: number
     ): Promise<void> {
         await this.redisService.upgrade(name, {
             storage,
             volume,
-            imageName,
-            imageVersion
+            image,
+            containerPort
         });
 
         if(enableAdmin) {

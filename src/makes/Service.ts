@@ -1,47 +1,49 @@
-export const REDIS_STORAGE_VOLUME = "volume";
-export const REDIS_STORAGE_FILESYSTEM = "filesystem";
-export type RedisStorageType = typeof REDIS_STORAGE_VOLUME | typeof REDIS_STORAGE_FILESYSTEM;
+import {Image} from "@wocker/utils";
+import {StorageType} from "../types";
+
 
 export type ServiceProps = {
     name: string;
     host?: string;
     image?: string;
+    /** @deprecated */
     imageName?: string;
+    /** @deprecated */
     imageVersion?: string;
-    storage?: RedisStorageType;
+    storage?: StorageType;
     volume?: string;
+    containerPort?: number;
 };
 
 export class Service {
     public name: string;
     public host?: string;
     protected _image?: string;
-    protected _imageName?: string;
-    protected _imageVersion?: string;
-    public storage?: RedisStorageType;
+    public storage?: StorageType;
     protected _volume?: string;
+    public containerPort?: number;
 
     public constructor(data: ServiceProps) {
         const {
             name,
             host,
             storage,
-            image,
             imageName,
             imageVersion,
-            volume
+            image = imageName && imageVersion ? `${imageName}:${imageVersion}` : imageName,
+            volume,
+            containerPort
         } = data;
 
         this.name = name;
         this.host = host;
         this.storage = storage;
-        this._image = image;
-        this._imageName = imageName;
-        this._imageVersion = imageVersion;
         this._volume = volume;
+        this._image = image;
+        this.containerPort = containerPort;
 
         if(!this.isExternal && !this.storage) {
-            this.storage = REDIS_STORAGE_FILESYSTEM;
+            this.storage = StorageType.FS;
         }
     }
 
@@ -51,46 +53,23 @@ export class Service {
 
     public get image(): string {
         if(!this._image) {
-            return `${this.imageName}:${this.imageVersion}`;
+            return "redis:8.6.2";
         }
 
         return this._image;
     }
 
-    public get imageName(): string {
-        if(this._image) {
-            const [imageName = "redis"] = this._image.split(":");
-
-            return imageName;
+    public set image(image: string | undefined) {
+        if(!image) {
+            delete this._image;
+            return;
         }
 
-        if(this._imageName) {
-            return this._imageName;
+        if(!Image.isValid(image)) {
+            throw new Error(`Invalid image ${image}`);
         }
 
-        return "redis";
-    }
-
-    public set imageName(imageName: string) {
-        this._image = `${imageName}:${this.imageVersion}`;
-    }
-
-    public get imageVersion(): string {
-        if(this._image) {
-            const [, imageVersion = "latest"] = this._image.split(":");
-
-            return imageVersion;
-        }
-
-        if(this._imageVersion) {
-            return this._imageVersion;
-        }
-
-        return "latest";
-    }
-
-    public set imageVersion(imageVersion: string) {
-        this._image = `${this.imageName}:${imageVersion}`;
+        this._image = image;
     }
 
     public get containerName(): string {
@@ -119,9 +98,7 @@ export class Service {
             host: this.host,
             image: this.image,
             storage: this.storage,
-            volume: this._volume && this._volume !== this.defaultVolumeName
-                ? this._volume
-                : undefined
+            volume: this._volume
         };
     }
 }
