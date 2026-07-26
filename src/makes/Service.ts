@@ -13,6 +13,7 @@ export type ServiceProps = {
     storage?: StorageType;
     volume?: string;
     containerPort?: number;
+    password?: string;
 };
 
 export class Service {
@@ -22,6 +23,7 @@ export class Service {
     public storage?: StorageType;
     protected _volume?: string;
     public containerPort?: number;
+    public password?: string;
 
     public constructor(data: ServiceProps) {
         const {
@@ -32,7 +34,8 @@ export class Service {
             imageVersion,
             image = imageName && imageVersion ? `${imageName}:${imageVersion}` : imageName,
             volume,
-            containerPort
+            containerPort,
+            password
         } = data;
 
         this.name = name;
@@ -41,6 +44,7 @@ export class Service {
         this._volume = volume;
         this._image = image;
         this.containerPort = containerPort;
+        this.password = password;
 
         if(!this.isExternal && !this.storage) {
             this.storage = StorageType.FS;
@@ -98,7 +102,9 @@ export class Service {
             host: this.host,
             image: this.image,
             storage: this.storage,
-            volume: this._volume
+            volume: this._volume,
+            containerPort: this.containerPort,
+            password: this.password
         };
     }
 }

@@ -1,0 +1,56 @@
+{
+    "Id": "sha256:832d7785830f3f4b559300e6191fc914b15642c1935252338825cf4332200148",
+    "RepoTags": [
+        "redis:8.6.2"
+    ],
+    "RepoDigests": [
+        "redis@sha256:832d7785830f3f4b559300e6191fc914b15642c1935252338825cf4332200148"
+    ],
+    "Comment": "buildkit.dockerfile.v0",
+    "Created": "2026-04-22T01:38:55.755210651Z",
+    "Config": {
+        "ExposedPorts": {
+            "6379/tcp": {}
+        },
+        "Env": [
+            "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        ],
+        "Entrypoint": [
+            "docker-entrypoint.sh"
+        ],
+        "Cmd": [
+            "redis-server"
+        ],
+        "WorkingDir": "/data"
+    },
+    "Architecture": "amd64",
+    "Os": "linux",
+    "Size": 53262108,
+    "RootFS": {
+        "Type": "layers",
+        "Layers": [
+            "sha256:6d7c150df58d41c351cd9b03f1cda7a9a23d6fc91436e2bf0f098c6dd78c9c55",
+            "sha256:b0ae8e516037407c8030b5ab799ffc5dadcb09dc37c41f11d53eab4c705a2173",
+            "sha256:bccf0ef3fe3bad2ed0344b4b80ccf6ddc17ca474dd8d8eb37cb8f8aff98867d7",
+            "sha256:612604d55a1d159f513360090509e8c2d4cbbb795ffa8103066328e00fea9fbe",
+            "sha256:d91a39c8c18ab92b93b2dd0a58e63b5836e418d67205951d27d2a0120c9f5918",
+            "sha256:5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef",
+            "sha256:bccc11fda0ddffe03f6e64985ba2507b76ee7d5c9ed6ac08486470cfae42523c"
+        ]
+    },
+    "Metadata": {
+        "LastTagTime": "2026-07-26T21:29:47.495076901Z"
+    },
+    "Descriptor": {
+        "mediaType": "application/vnd.oci.image.index.v1+json",
+        "digest": "sha256:832d7785830f3f4b559300e6191fc914b15642c1935252338825cf4332200148",
+        "size": 10205
+    },
+    "Identity": {
+        "Pull": [
+            {
+                "Repository": "docker.io/library/redis"
+            }
+        ]
+    }
+}

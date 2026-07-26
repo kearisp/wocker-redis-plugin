@@ -1,14 +1,13 @@
 import {
     DockerService,
     FileSystem,
-    Inject,
     Injectable,
-    PLUGIN_DIR_KEY,
+    PluginConfigService,
     ProxyService
 } from "@wocker/core";
 import {promptInput, promptConfirm, promptSelect} from "@wocker/utils";
 import CliTable from "cli-table3";
-import {Config} from "../makes/Config";
+import {RedisPluginConfig} from "../makes/RedisPluginConfig";
 import {Service, ServiceProps} from "../makes/Service";
 import {StorageType} from "../types";
 
@@ -16,29 +15,24 @@ import {StorageType} from "../types";
 @Injectable()
 export class RedisService {
     protected readonly commander: string = "redis-commander.workspace";
-    protected _config?: Config;
+    protected _config?: RedisPluginConfig;
 
     public constructor(
         protected readonly dockerService: DockerService,
         protected readonly proxyService: ProxyService,
-        @Inject(PLUGIN_DIR_KEY)
-        protected readonly pluginDir: string
+        protected readonly pluginConfigService: PluginConfigService
     ) {}
 
-    public get config(): Config {
+    public get config(): RedisPluginConfig {
         if(!this._config) {
-            this._config = Config.make(this.fs);
+            this._config = this.pluginConfigService.getConfig(RedisPluginConfig);
         }
 
         return this._config;
     }
 
     public get fs(): FileSystem {
-        if(!this.pluginDir) {
-            throw new Error("Plugin dir missed");
-        }
-
-        return new FileSystem(this.pluginDir);
+        return this.pluginConfigService.fs;
     }
 
     public async create(serviceProps: Partial<ServiceProps> = {}): Promise<void> {
@@ -61,19 +55,10 @@ export class RedisService {
         }
 
         if(!serviceProps.host) {
-            if(!serviceProps.storage || ![StorageType.FS, StorageType.VOLUME].includes(serviceProps.storage)) {
+            if(!serviceProps.storage || !StorageType.values().includes(serviceProps.storage)) {
                 serviceProps.storage = await promptSelect<StorageType>({
-                    message: "Storage type:",
-                    options: [
-                        {
-                            label: "Volume",
-                            value: StorageType.VOLUME
-                        },
-                        {
-                            label: "File System",
-                            value: StorageType.FS
-                        }
-                    ]
+                    message: "Storage type",
+                    options: StorageType.options()
                 });
             }
 
@@ -86,7 +71,7 @@ export class RedisService {
                 if(needPort) {
                     serviceProps.containerPort = await promptInput({
                         required: true,
-                        message: "Container port:",
+                        message: "Container port",
                         type: "number",
                         min: 1,
                         default: 6379
@@ -106,7 +91,7 @@ export class RedisService {
         console.info(`Service "${service.name}" created`);
     }
 
-    public async destroy(name: string, force?: boolean, yes?: boolean): Promise<void> {
+    public async destroy(name: string, yes?: boolean, force?: boolean): Promise<void> {
         const service = this.config.getService(name);
 
         if(!force && this.config.default === name) {
@@ -123,6 +108,8 @@ export class RedisService {
                 throw new Error("Aborted");
             }
         }
+
+        await this.dockerService.removeContainer(service.containerName);
 
         switch(service.storage) {
             case StorageType.VOLUME: {
@@ -161,6 +148,10 @@ export class RedisService {
 
         const service = this.config.getServiceOrDefault(name);
 
+        if(service.isExternal) {
+            return;
+        }
+
         let container = await this.dockerService.getContainer(service.containerName);
 
         if(restart && container) {
@@ -198,7 +189,13 @@ export class RedisService {
                 env: {
                     VIRTUAL_HOST: service.containerName
                 },
-                volumes
+                cmd: service.password
+                    ? ["redis-server", "--requirepass", service.password]
+                    : undefined,
+                volumes,
+                ports: service.containerPort
+                    ? [`${service.containerPort}:6379`]
+                    : undefined
             });
         }
 
@@ -238,6 +235,10 @@ export class RedisService {
             service.containerPort = serviceProps.containerPort;
         }
 
+        if(serviceProps.password) {
+            service.password = serviceProps.password;
+        }
+
         this.config.setService(service);
         this.config.save();
     }
@@ -246,6 +247,23 @@ export class RedisService {
         const service = this.config.getServiceOrDefault(name);
 
         await this.dockerService.removeContainer(service.containerName);
+    }
+
+    public async redis(name?: string): Promise<void> {
+        const service = this.config.getServiceOrDefault(name);
+
+        const container = await this.dockerService.getContainer(service.containerName);
+
+        if(!container) {
+            throw new Error(`Service "${service.name}" isn't started`);
+        }
+
+        await this.dockerService.exec(service.containerName, {
+            tty: true,
+            cmd: service.password
+                ? ["redis-cli", "-a", service.password, "--no-auth-warning"]
+                : ["redis-cli"]
+        });
     }
 
     public async startCommander(): Promise<void> {
@@ -268,14 +286,31 @@ export class RedisService {
                 if(service.host) {
                     host = service.host;
                 }
-                else if(await this.dockerService.getContainer(service.containerName)) {
+                else {
+                    const serviceContainer = await this.dockerService.getContainer(service.containerName);
+
+                    if(!serviceContainer) {
+                        continue;
+                    }
+
+                    const {
+                        State: {
+                            Running
+                        }
+                    } = await serviceContainer.inspect();
+
+                    if(!Running) {
+                        continue;
+                    }
+
                     host = service.containerName;
                 }
-                else {
-                    continue;
-                }
 
-                redisHosts.push(`${service.name}:${host}`);
+                redisHosts.push(
+                    service.password
+                        ? `${service.name}:${host}:6379:0:${service.password}`
+                        : `${service.name}:${host}`
+                );
             }
 
             if(redisHosts.length === 0) {
