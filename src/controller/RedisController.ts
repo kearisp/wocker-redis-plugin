@@ -17,6 +17,15 @@ export class RedisController {
         protected readonly redisService: RedisService
     ) {}
 
+    @Command("redis [service]")
+    @Description("Opens an interactive redis-cli session against the specified Redis service.")
+    public async redis(
+        @Param("service")
+        service?: string
+    ): Promise<void> {
+        await this.redisService.redis(service);
+    }
+
     @Command("redis:create [service]")
     @Description("Creates a new Redis service instance with optional configuration for host and storage type.")
     public async create(
@@ -33,14 +42,18 @@ export class RedisController {
         image?: string,
         @Option("container-port")
         @Description("Port on which the database container will be accessible on the host")
-        containerPort?: number
+        containerPort?: number,
+        @Option("password", "p")
+        @Description("Password to protect the service with (sets --requirepass)")
+        password?: string
     ): Promise<void> {
         await this.redisService.create({
             name,
             host,
             storage,
             image,
-            containerPort
+            containerPort,
+            password
         });
     }
 
@@ -56,8 +69,7 @@ export class RedisController {
         @Description("Skip confirmation")
         yes?: boolean
     ): Promise<void> {
-        await this.redisService.stop(service);
-        await this.redisService.destroy(service, force, yes);
+        await this.redisService.destroy(service, yes, force);
         await this.redisService.startCommander();
     }
 
@@ -113,13 +125,17 @@ export class RedisController {
         disableAdmin?: boolean,
         @Option("container-port")
         @Description("Port on which the database container will be accessible on the host")
-        containerPort?: number
+        containerPort?: number,
+        @Option("password", "p")
+        @Description("Password to protect the service with (sets --requirepass)")
+        password?: string
     ): Promise<void> {
         await this.redisService.upgrade(name, {
             storage,
             volume,
             image,
-            containerPort
+            containerPort,
+            password
         });
 
         if(enableAdmin) {

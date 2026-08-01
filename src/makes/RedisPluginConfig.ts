@@ -1,42 +1,47 @@
-import {FileSystem} from "@wocker/core";
+import {PluginConfig} from "@wocker/core";
 import {Service, ServiceProps} from "./Service";
 
 
-type AdminConfig = {
+export type AdminConfig = {
     enabled: boolean;
     domain: string;
 };
 
 export type ConfigProps = {
+    /** @deprecated */
     adminDomain?: string;
-    default?: string;
+    /** @deprecated */
     defaultService?: string;
+    default?: string;
     services?: ServiceProps[];
-    admin?: AdminConfig;
+    admin?: Partial<AdminConfig>;
 };
 
-export abstract class Config {
+export class RedisPluginConfig extends PluginConfig {
     public default?: string;
-    public services: Service[] = [];
+    public services: Service[];
     public admin: AdminConfig;
 
     public constructor(data: ConfigProps) {
+        super(data);
+
         const {
-            adminDomain = "redis-commander.workspace",
+            adminDomain,
             default: defaultService,
-            defaultService: oldDefault,
+            defaultService: oldDefaultService,
             services = [],
-            admin = {
-                enabled: true,
-                domain: adminDomain || "redis-commander.workspace",
-            }
+            admin: {
+                enabled: adminEnabled = true,
+                domain: adminDomain2 = adminDomain || "redis-commander.workspace"
+            } = {}
         } = data;
 
-        this.default = defaultService || oldDefault;
-        this.admin = admin;
-        this.services = (services || []).map((value) => {
-            return new Service(value);
-        });
+        this.default = defaultService || oldDefaultService;
+        this.services = services.map((value) => new Service(value));
+        this.admin = {
+            enabled: adminEnabled,
+            domain: adminDomain2
+        };
     }
 
     public hasService(name: string): boolean {
@@ -113,35 +118,13 @@ export abstract class Config {
         return this.hasService(this.default);
     }
 
-    public abstract save(): void;
-
     public toObject(): ConfigProps {
         return {
             default: this.default,
             admin: this.admin,
             services: this.services.length > 0
-                ? this.services.map((service) => {
-                    return service.toObject();
-                })
-                : undefined,
+                ? this.services.map((service) => service.toObject())
+                : undefined
         };
-    }
-
-    public static make(fs: FileSystem): Config {
-        const data = fs.exists("config.json")
-            ? fs.readJSON("config.json")
-            : {};
-
-        return new class extends Config {
-            public save(): void {
-                if(!fs.exists("")) {
-                    fs.mkdir("", {
-                        recursive: true
-                    });
-                }
-
-                fs.writeJSON("config.json", this.toObject());
-            }
-        }(data);
     }
 }
