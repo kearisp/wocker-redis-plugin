@@ -6,7 +6,8 @@ import {
     DockerService,
     PluginConfigService,
     FILE_SYSTEM_DRIVER_KEY,
-    PLUGIN_DIR_KEY
+    PLUGIN_DIR_KEY,
+    WOCKER_DATA_DIR_KEY
 } from "@wocker/core";
 import DockerModule from "@wocker/docker-module";
 import DockerMockModule, {Fixtures} from "@wocker/docker-mock-module";
@@ -19,7 +20,7 @@ describe("RedisService", (): void => {
     const ROOT_DIR = Path.join(__dirname, "..", "..");
     const fixtures = Fixtures.fromPath(Path.join(ROOT_DIR, "fixtures"));
 
-    let context: ApplicationContext;
+    let context: ApplicationContext
     let redisService: RedisService;
 
     beforeAll(async (): Promise<void> => {
@@ -46,6 +47,7 @@ describe("RedisService", (): void => {
                 ]
             })
             .overrideProvider(FILE_SYSTEM_DRIVER_KEY).useValue(vol)
+            .overrideProvider(WOCKER_DATA_DIR_KEY).useValue("/wocker-test")
             .overrideModule(DockerModule).useModule(DockerMockModule.withFixtures(fixtures))
             .build();
 

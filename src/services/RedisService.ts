@@ -192,6 +192,7 @@ export class RedisService {
                 cmd: service.password
                     ? ["redis-server", "--requirepass", service.password]
                     : undefined,
+                internal: true,
                 volumes,
                 ports: service.containerPort
                     ? [`${service.containerPort}:6379`]
@@ -321,6 +322,7 @@ export class RedisService {
                 name: this.commander,
                 image: "rediscommander/redis-commander:latest",
                 restart: "always",
+                internal: true,
                 env: {
                     VIRTUAL_HOST: this.config.admin.domain,
                     VIRTUAL_PORT: "8081",
